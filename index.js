@@ -15,3 +15,6 @@ app.ports.saveHighScore.subscribe(hs => {
 app.ports.vibrate.subscribe(() => {
   window.navigator.vibrate(1)
 })
+app.ports.logError.subscribe(err => {
+  console.error(err)
+})

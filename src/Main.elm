@@ -3,6 +3,7 @@ port module Main exposing (main)
 import Array
 import Board exposing (Board, Piece(..))
 import Browser
+import Browser.Dom
 import Browser.Events
 import Dict exposing (Dict)
 import Ease
@@ -43,6 +44,9 @@ port saveHighScore : Int -> Cmd msg
 port vibrate : () -> Cmd msg
 
 
+port logError : String -> Cmd msg
+
+
 
 -- MODEL
 
@@ -53,6 +57,8 @@ type alias Flags =
 
 type alias Model =
     { board : Board
+    , gameBbox : Bbox
+    , heldPiece : Maybe HeldPiece
     , time : Float
     , isGameOver : Bool
     , piecesQueue : List Piece
@@ -61,6 +67,28 @@ type alias Model =
     , isNewHighScore : Bool
     , removedPieces : RemovedPieces
     , fallingPieces : FallingPieces
+    }
+
+
+type alias Bbox =
+    { x : Float
+    , y : Float
+    , w : Float
+    , h : Float
+    }
+
+
+type alias HeldPiece =
+    { piece : Piece
+
+    -- coordinates of the grabbed piece
+    , pos : ( Int, Int )
+
+    -- click/tap xy coordinates
+    , startPoint : ( Float, Float )
+
+    -- <0, 1> range reflecting the current position on the board
+    , gamePos : ( Float, Float )
     }
 
 
@@ -77,6 +105,8 @@ init flags =
     let
         model =
             { board = Array.empty
+            , gameBbox = Bbox 0 0 100 100
+            , heldPiece = Nothing
             , time = 0
             , isGameOver = False
             , piecesQueue = []
@@ -94,7 +124,10 @@ init flags =
                 |> Maybe.withDefault 0
 
         cmd =
-            generateBoardCmd
+            Cmd.batch
+                [ generateBoardCmd
+                , getGameBboxCmd
+                ]
     in
     ( model, cmd )
 
@@ -107,14 +140,36 @@ generateBoardCmd =
         |> Random.generate Init
 
 
+getGameBboxCmd : Cmd Msg
+getGameBboxCmd =
+    Browser.Dom.getElement "gameView"
+        |> Task.attempt
+            (\res ->
+                res
+                    |> Result.map
+                        (\e ->
+                            { x = e.element.x
+                            , y = e.element.y
+                            , w = e.element.width
+                            , h = e.element.height
+                            }
+                        )
+                    |> GotGameBbox
+            )
+
+
 
 -- UPDATE
 
 
 type Msg
     = Init { board : Board, piecesQueue : List Piece }
+    | ResizedWindow
+    | GotGameBbox (Result Browser.Dom.Error Bbox)
     | Tick Float
-    | ClickedPiece Piece ( Int, Int )
+    | GrabbedPiece Piece ( Int, Int ) ( Float, Float )
+    | MovedPiece ( Float, Float )
+    | DroppedPiece
     | GotPiecesQueue (List Piece)
     | RemoveAnimationState Int
     | GameOver
@@ -136,74 +191,54 @@ update msg model =
                 Cmd.none
             )
 
+        ResizedWindow ->
+            ( { model | heldPiece = Nothing }
+            , getGameBboxCmd
+            )
+
+        GotGameBbox (Ok bbox) ->
+            ( { model | gameBbox = bbox }
+            , Cmd.none
+            )
+
+        GotGameBbox (Err (Browser.Dom.NotFound err)) ->
+            ( model
+            , logError ("GotGameBbox Err: " ++ err)
+            )
+
         Tick d ->
             ( { model | time = model.time + d }, Cmd.none )
 
-        ClickedPiece piece ( x, y ) ->
-            let
-                chain =
-                    Board.chainOfSameColor piece ( x, y ) model.board
-            in
-            if Dict.size chain < Board.minChain then
-                ( model, Cmd.none )
+        GrabbedPiece piece ( x, y ) mouseXY ->
+            ( { model
+                | heldPiece =
+                    Just
+                        { piece = piece
+                        , pos = ( x, y )
+                        , startPoint = mouseToGamePosition model.gameBbox mouseXY
+                        , gamePos = mouseToGamePosition model.gameBbox mouseXY
+                        }
+              }
+            , Cmd.none
+            )
 
-            else
-                let
-                    ( newBoard, newPiecesQueue, fallingPieces ) =
-                        Board.removePieces chain
-                            model.piecesQueue
-                            model.board
+        MovedPiece mouseXY ->
+            case model.heldPiece of
+                Just hp ->
+                    ( { model
+                        | heldPiece =
+                            Just { hp | gamePos = mouseToGamePosition model.gameBbox mouseXY }
+                      }
+                    , Cmd.none
+                    )
 
-                    newScore =
-                        model.score + Board.chainScore chain
+                Nothing ->
+                    ( model, Cmd.none )
 
-                    removedPieces =
-                        Dict.map
-                            (\_ p ->
-                                { start = model.time, piece = p }
-                            )
-                            chain
-
-                    maxDistance =
-                        fallingPieces
-                            |> Dict.foldl (\_ distance acc -> max distance acc) 0
-
-                    newFallingPieces =
-                        fallingPieces
-                            |> Dict.map
-                                (\_ distance ->
-                                    { start = model.time
-                                    , duration = calcFallingAnimationDuration distance
-                                    , distance = distance
-                                    }
-                                )
-
-                    animationsDuration =
-                        calcFallingAnimationDuration maxDistance
-                in
-                ( { model
-                    | score = newScore
-                    , removedPieces = removedPieces
-                    , board = newBoard
-                    , fallingPieces = newFallingPieces
-                    , piecesQueue = newPiecesQueue
-                  }
-                , Cmd.batch
-                    [ refillPiecesQueue newPiecesQueue
-                    , Task.perform
-                        (\_ -> RemoveAnimationState newScore)
-                        (Process.sleep animationsDuration)
-                    , if Board.isGameOver newBoard then
-                        -- show game over screen with a small delay after click
-                        Task.perform
-                            (\_ -> GameOver)
-                            (Process.sleep gameOverScreenDelay)
-
-                      else
-                        Cmd.none
-                    , vibrate ()
-                    ]
-                )
+        DroppedPiece ->
+            ( { model | heldPiece = Nothing }
+            , Cmd.none
+            )
 
         GotPiecesQueue queue ->
             ( { model | piecesQueue = model.piecesQueue ++ queue }, Cmd.none )
@@ -269,9 +304,40 @@ calcFallingAnimationDuration distance =
         * fallingAnimationBaseDuration
 
 
+mouseToGamePosition : Bbox -> ( Float, Float ) -> ( Float, Float )
+mouseToGamePosition gameBbox ( mouseX, mouseY ) =
+    let
+        xPercent =
+            (mouseX - gameBbox.x) / gameBbox.w
+
+        yPercent =
+            (mouseY - gameBbox.y) / gameBbox.h
+    in
+    ( clamp 0 1 xPercent, clamp 0 1 yPercent )
+
+
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Browser.Events.onAnimationFrameDelta Tick
+subscriptions model =
+    Sub.batch
+        [ Browser.Events.onAnimationFrameDelta Tick
+        , Browser.Events.onResize (\_ _ -> ResizedWindow)
+        , case model.heldPiece of
+            Just _ ->
+                Sub.batch
+                    [ Browser.Events.onMouseMove (JD.map MovedPiece mouseEventPositionDecoder)
+                    , Browser.Events.onMouseUp (JD.succeed DroppedPiece)
+                    ]
+
+            Nothing ->
+                Sub.none
+        ]
+
+
+mouseEventPositionDecoder : JD.Decoder ( Float, Float )
+mouseEventPositionDecoder =
+    JD.map2 Tuple.pair
+        (JD.field "pageX" JD.float)
+        (JD.field "pageY" JD.float)
 
 
 
@@ -379,12 +445,18 @@ view model =
                     |> List.map String.fromFloat
                     |> String.join " "
                 )
+            , SA.id "gameView"
             ]
             [ if Dict.isEmpty model.removedPieces && Dict.isEmpty model.fallingPieces then
-                HL.lazy4 viewBoard 0 model.board model.removedPieces model.fallingPieces
+                HL.lazy5 viewBoard
+                    0
+                    model.board
+                    model.removedPieces
+                    model.fallingPieces
+                    model.heldPiece
 
               else
-                viewBoard model.time model.board model.removedPieces model.fallingPieces
+                viewBoard model.time model.board model.removedPieces model.fallingPieces model.heldPiece
             , S.g
                 [ SA.transform <|
                     "translate("
@@ -404,8 +476,8 @@ view model =
         ]
 
 
-viewBoard : Float -> Board -> RemovedPieces -> FallingPieces -> Svg Msg
-viewBoard time board removedPieces fallingPieces =
+viewBoard : Float -> Board -> RemovedPieces -> FallingPieces -> Maybe HeldPiece -> Svg Msg
+viewBoard time board removedPieces fallingPieces heldPiece =
     let
         viewRow y row =
             Array.toList row
@@ -416,13 +488,7 @@ viewBoard time board removedPieces fallingPieces =
                             , x = x
                             , y = y
                             , piece = piece
-                            , animation =
-                                case Dict.get ( x, y ) fallingPieces of
-                                    Just falling ->
-                                        PieceFalling falling
-
-                                    Nothing ->
-                                        PieceIdle
+                            , state = boardPieceState ( x, y ) fallingPieces heldPiece
                             }
                     )
     in
@@ -433,7 +499,41 @@ viewBoard time board removedPieces fallingPieces =
                 |> List.indexedMap viewRow
                 |> List.concat
             )
+        , case heldPiece of
+            Just hp ->
+                viewPiece
+                    { now = time
+                    , x = Tuple.first hp.pos
+                    , y = Tuple.second hp.pos
+                    , piece = hp.piece
+                    , state = PieceHeld hp
+                    }
+
+            Nothing ->
+                S.text ""
         ]
+
+
+boardPieceState ( x, y ) fallingPieces heldPiece =
+    let
+        isHidden =
+            case heldPiece of
+                Just hp ->
+                    ( x, y ) == hp.pos
+
+                Nothing ->
+                    False
+    in
+    if isHidden then
+        PieceHidden
+
+    else
+        case Dict.get ( x, y ) fallingPieces of
+            Just falling ->
+                PieceFalling falling
+
+            Nothing ->
+                PieceIdle
 
 
 viewRemovedPieces : Float -> Board -> RemovedPieces -> List (Svg Msg)
@@ -450,7 +550,7 @@ viewRemovedPieces time board removedPieces =
                                     , x = x
                                     , y = y
                                     , piece = p.piece
-                                    , animation = PieceRemoving { start = p.start }
+                                    , state = PieceRemoving { start = p.start }
                                     }
 
                             Nothing ->
@@ -462,8 +562,10 @@ viewRemovedPieces time board removedPieces =
         |> List.concat
 
 
-type PieceAnimation
+type PieceState
     = PieceIdle
+    | PieceHidden
+    | PieceHeld HeldPiece
     | PieceRemoving { start : Float }
     | PieceFalling { start : Float, duration : Float, distance : Int }
 
@@ -473,10 +575,10 @@ viewPiece :
     , x : Int
     , y : Int
     , piece : Piece
-    , animation : PieceAnimation
+    , state : PieceState
     }
     -> Html Msg
-viewPiece { now, x, y, piece, animation } =
+viewPiece { now, x, y, piece, state } =
     let
         ( colorClass, symbol ) =
             case piece of
@@ -498,9 +600,41 @@ viewPiece { now, x, y, piece, animation } =
         ( xPos, yPos, otherAttrs ) =
             pieceRenderPosition ( x, y )
                 |> (\( xp, yp ) ->
-                        case animation of
+                        case state of
                             PieceIdle ->
                                 ( xp, yp, [] )
+
+                            PieceHidden ->
+                                ( xp, yp, [ HA.style "opacity" "0.1" ] )
+
+                            PieceHeld hp ->
+                                let
+                                    ( hX, hY ) =
+                                        hp.gamePos
+
+                                    ( sX, sY ) =
+                                        hp.startPoint
+
+                                    ( xOffset, yOffset ) =
+                                        ( 37 * (hX - sX)
+                                        , 55 * (hY - sY)
+                                        )
+
+                                    ( newXPos, newYPos ) =
+                                        if abs xOffset > abs yOffset then
+                                            -- snap piece to x axis
+                                            ( xp + xOffset, yp )
+
+                                        else
+                                            -- snap piece to y axis
+                                            ( xp, yp + yOffset )
+                                in
+                                ( newXPos
+                                , newYPos
+                                , [ -- SA.transform "translate(-2 -2)"
+                                    SA.class "-held"
+                                  ]
+                                )
 
                             PieceRemoving f ->
                                 let
@@ -541,8 +675,8 @@ viewPiece { now, x, y, piece, animation } =
                                 ( xp, yp - yOffset, [] )
                    )
 
-        clickDecoder =
-            JD.succeed <| ClickedPiece piece ( x, y )
+        grabDecoder =
+            JD.map (GrabbedPiece piece ( x, y )) mouseEventPositionDecoder
     in
     S.g
         [ SA.transform <|
@@ -554,8 +688,8 @@ viewPiece { now, x, y, piece, animation } =
         ]
         [ S.g
             ([ SA.class <| "gamePiece " ++ colorClass
-             , SE.on "mousedown" clickDecoder
-             , SE.on "touchstart" clickDecoder
+             , SE.on "mousedown" grabDecoder
+             , SE.on "touchstart" grabDecoder
              ]
                 ++ otherAttrs
             )
@@ -607,7 +741,7 @@ viewGameOver score isNewHighScore =
                         ]
                     , H.p []
                         [ externalLink
-                            [ HA.href "https://github.com/megapctr/pop3-game"
+                            [ HA.href "https://github.com/megapctr/gems-game"
                             , HA.style "font-size" "1.2rem"
                             ]
                             [ H.text "View source code ↗" ]

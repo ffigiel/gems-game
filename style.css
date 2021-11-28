@@ -106,7 +106,7 @@ svg text {
 }
 
 @media (hover: hover) {
-  .gamePiece:not(:active):hover {
+  .gamePiece:not(:active, .-held):hover {
     transform: scale(110%);
   }
 }

@@ -7,23 +7,23 @@ export default defineConfig(({ mode }) => {
   return {
     base: isDev
       ? '/'
-      : '/pop3-game/',
+      : '/gems-game/',
     plugins: [
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico'],
         manifest: {
-          name: "Pop 3",
-          short_name: "Pop 3",
+          name: "Gems",
+          short_name: "Gems",
           display: "standalone",
           description: "A classic mini-game",
           background_color: '#222222',
           icons: [{
-            src: "img/pop3_icon.png",
+            src: "img/gems_icon.png",
             sizes: "512x512",
             type: "image/png",
           }, {
-            src: "img/pop3_maskable.png",
+            src: "img/gems_maskable.png",
             sizes: "640x640",
             type: "image/png",
             purpose: "maskable",
@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
         }
       }),
       elmPlugin({
-        debug: false,
+        //debug: false,
       }),
     ],
   }

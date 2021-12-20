@@ -12,7 +12,6 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Html.Lazy as HL
 import Json.Decode as JD
-import Process
 import Random
 import Svg as S exposing (Svg)
 import Svg.Attributes as SA
@@ -93,11 +92,24 @@ type alias HeldPiece =
 
 
 type alias RemovedPieces =
-    Dict ( Int, Int ) { start : Float, piece : Piece }
+    Dict ( Int, Int ) RemovedPiecesData
+
+
+type alias RemovedPiecesData =
+    { start : Float
+    , piece : Piece
+    }
 
 
 type alias FallingPieces =
-    Dict ( Int, Int ) { start : Float, duration : Float, distance : Int }
+    Dict ( Int, Int ) FallingPiecesData
+
+
+type alias FallingPiecesData =
+    { start : Float
+    , duration : Float
+    , distance : Int
+    }
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -288,22 +300,6 @@ update msg model =
             )
 
 
-refillPiecesQueue : List Piece -> Cmd Msg
-refillPiecesQueue queue =
-    if List.length queue < Board.queueSize then
-        Random.generate GotPiecesQueue Board.piecesQueueGenerator
-
-    else
-        Cmd.none
-
-
-calcFallingAnimationDuration : Int -> Float
-calcFallingAnimationDuration distance =
-    -- slightly longer falling animation for higher distances
-    logBase (toFloat Board.minChain) (toFloat <| Board.minChain + distance - 1)
-        * fallingAnimationBaseDuration
-
-
 mouseToGamePosition : Bbox -> ( Float, Float ) -> ( Float, Float )
 mouseToGamePosition gameBbox ( mouseX, mouseY ) =
     let
@@ -353,16 +349,6 @@ animationScale =
 removingAnimationDuration : number
 removingAnimationDuration =
     400 * animationScale
-
-
-fallingAnimationBaseDuration : number
-fallingAnimationBaseDuration =
-    400 * animationScale
-
-
-gameOverScreenDelay : number
-gameOverScreenDelay =
-    200 * animationScale
 
 
 calcAnimationProgress : Float -> Float -> Float -> Float
@@ -514,6 +500,11 @@ viewBoard time board removedPieces fallingPieces heldPiece =
         ]
 
 
+boardPieceState :
+    ( Int, Int )
+    -> Dict ( Int, Int ) FallingPiecesData
+    -> Maybe HeldPiece
+    -> PieceState
 boardPieceState ( x, y ) fallingPieces heldPiece =
     let
         isHidden =
@@ -533,7 +524,65 @@ boardPieceState ( x, y ) fallingPieces heldPiece =
                 PieceFalling falling
 
             Nothing ->
-                PieceIdle
+                case heldPiece of
+                    Just hp ->
+                        let
+                            dir =
+                                getDirection hp.startPoint hp.gamePos
+
+                            dx =
+                                Tuple.first hp.startPoint - Tuple.first hp.gamePos
+
+                            dy =
+                                Tuple.second hp.startPoint - Tuple.second hp.gamePos
+                        in
+                        if dir == Up && hp.pos == ( x, y - 1 ) then
+                            PieceSwitching ( 0, dy )
+
+                        else if dir == Down && hp.pos == ( x, y + 1 ) then
+                            PieceSwitching ( 0, dy )
+
+                        else if dir == Left && hp.pos == ( x + 1, y ) then
+                            PieceSwitching ( dx, 0 )
+
+                        else if dir == Right && hp.pos == ( x - 1, y ) then
+                            PieceSwitching ( dx, 0 )
+
+                        else
+                            PieceIdle
+
+                    Nothing ->
+                        PieceIdle
+
+
+type Direction
+    = Up
+    | Down
+    | Left
+    | Right
+
+
+getDirection : ( number, number ) -> ( number, number ) -> Direction
+getDirection ( ax, ay ) ( bx, by ) =
+    let
+        dx =
+            ax - bx
+
+        dy =
+            ay - by
+    in
+    if abs dx > abs dy then
+        if dx > 0 then
+            Left
+
+        else
+            Right
+
+    else if dy > 0 then
+        Down
+
+    else
+        Up
 
 
 viewRemovedPieces : Float -> Board -> RemovedPieces -> List (Svg Msg)
@@ -568,6 +617,7 @@ type PieceState
     | PieceHeld HeldPiece
     | PieceRemoving { start : Float }
     | PieceFalling { start : Float, duration : Float, distance : Int }
+    | PieceSwitching ( Float, Float )
 
 
 viewPiece :
@@ -600,12 +650,19 @@ viewPiece { now, x, y, piece, state } =
         ( xPos, yPos, otherAttrs ) =
             pieceRenderPosition ( x, y )
                 |> (\( xp, yp ) ->
+                        let
+                            ( minx, miny ) =
+                                pieceRenderPosition ( x - 1, y - 1 )
+
+                            ( maxx, maxy ) =
+                                pieceRenderPosition ( x + 1, y + 1 )
+                        in
                         case state of
                             PieceIdle ->
                                 ( xp, yp, [] )
 
                             PieceHidden ->
-                                ( xp, yp, [ HA.style "opacity" "0.1" ] )
+                                ( xp, yp, [ HA.style "opacity" "0" ] )
 
                             PieceHeld hp ->
                                 let
@@ -629,8 +686,8 @@ viewPiece { now, x, y, piece, state } =
                                             -- snap piece to y axis
                                             ( xp, yp + yOffset )
                                 in
-                                ( newXPos
-                                , newYPos
+                                ( clamp minx maxx newXPos
+                                , clamp miny maxy newYPos
                                 , [ -- SA.transform "translate(-2 -2)"
                                     SA.class "-held"
                                   ]
@@ -673,6 +730,12 @@ viewPiece { now, x, y, piece, state } =
                                         totalDistance * (1 - animationProgress)
                                 in
                                 ( xp, yp - yOffset, [] )
+
+                            PieceSwitching ( dx, dy ) ->
+                                ( xp + (37 * dx) |> clamp minx maxx
+                                , yp + (55 * dy) |> clamp miny maxy
+                                , []
+                                )
                    )
 
         grabDecoder =

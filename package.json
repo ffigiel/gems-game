@@ -1,6 +1,8 @@
 {
   "dependencies": {
+    "@elm-tooling/elm-language-server": "^2.3.0",
     "elm": "^0.19.1-5",
+    "elm-tooling": "^1.7.0",
     "vite": "^2.6.14",
     "vite-plugin-elm": "^2.5.0",
     "vite-plugin-pwa": "^0.11.5"

@@ -536,7 +536,10 @@ boardPieceState ( x, y ) fallingPieces heldPiece =
                             dy =
                                 Tuple.second hp.startPoint - Tuple.second hp.gamePos
                         in
-                        if dir == Up && hp.pos == ( x, y - 1 ) then
+                        if dx == 0 && dy == 0 then
+                            PieceIdle
+
+                        else if dir == Up && hp.pos == ( x, y - 1 ) then
                             PieceSwitching ( 0, dy )
 
                         else if dir == Down && hp.pos == ( x, y + 1 ) then

@@ -13,6 +13,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Html.Lazy as HL
 import Json.Decode as JD
+import Process
 import Random
 import Svg as S exposing (Svg)
 import Svg.Attributes as SA
@@ -281,21 +282,21 @@ update msg model =
                                     Right ->
                                         ( x + 1, y )
 
-                            movedPiece =
+                            switchedPiece =
                                 Array2d.get newX newY model.board
 
                             ( newBoard, chain ) =
-                                case movedPiece of
-                                    Just mp ->
+                                case switchedPiece of
+                                    Just sp ->
                                         let
                                             b =
                                                 model.board
-                                                    |> Array2d.set x y mp
+                                                    |> Array2d.set x y sp
                                                     |> Array2d.set newX newY hp.piece
 
                                             c =
                                                 Dict.union
-                                                    (Board.validChain mp ( x, y ) b)
+                                                    (Board.validChain sp ( x, y ) b)
                                                     (Board.validChain hp.piece ( newX, newY ) b)
                                         in
                                         ( b, c )
@@ -303,12 +304,11 @@ update msg model =
                                     Nothing ->
                                         ( model.board, Dict.empty )
                         in
-                        ( { model
+                        { model
                             | heldPiece = Nothing
                             , board = newBoard
-                          }
-                        , Cmd.none
-                        )
+                        }
+                            |> handleValidMove chain
 
         GotPiecesQueue queue ->
             ( { model | piecesQueue = model.piecesQueue ++ queue }, Cmd.none )
@@ -370,6 +370,82 @@ mouseToGamePosition gameBbox ( mouseX, mouseY ) =
     ( clamp 0 1 xPercent, clamp 0 1 yPercent )
 
 
+handleValidMove : Board.Chain -> Model -> ( Model, Cmd Msg )
+handleValidMove chain model =
+    let
+        ( newBoard, newPiecesQueue, fallingPieces ) =
+            Board.removePieces chain
+                model.piecesQueue
+                model.board
+
+        newScore =
+            model.score + Board.chainScore chain
+
+        removedPieces =
+            Dict.map
+                (\_ p ->
+                    { start = model.time, piece = p }
+                )
+                chain
+
+        maxDistance =
+            fallingPieces
+                |> Dict.foldl (\_ distance acc -> max distance acc) 0
+
+        newFallingPieces =
+            fallingPieces
+                |> Dict.map
+                    (\_ distance ->
+                        { start = model.time
+                        , duration = calcFallingAnimationDuration distance
+                        , distance = distance
+                        }
+                    )
+
+        animationsDuration =
+            calcFallingAnimationDuration maxDistance
+    in
+    ( { model
+        | score = newScore
+        , removedPieces = removedPieces
+        , board = newBoard
+        , fallingPieces = newFallingPieces
+        , piecesQueue = newPiecesQueue
+      }
+    , Cmd.batch
+        [ refillPiecesQueue newPiecesQueue
+        , Task.perform
+            (\_ -> RemoveAnimationState newScore)
+            (Process.sleep animationsDuration)
+        , if Board.isGameOver newBoard then
+            -- show game over screen with a small delay after click
+            Task.perform
+                (\_ -> GameOver)
+                (Process.sleep gameOverScreenDelay)
+
+          else
+            Cmd.none
+        , vibrate ()
+        ]
+    )
+
+
+refillPiecesQueue : List Piece -> Cmd Msg
+refillPiecesQueue queue =
+    if List.length queue < Board.queueSize then
+        Random.generate GotPiecesQueue Board.piecesQueueGenerator
+
+    else
+        Cmd.none
+
+
+calcFallingAnimationDuration : Int -> Float
+calcFallingAnimationDuration distance =
+    -- slightly longer falling animation for higher distances
+    logBase (toFloat Board.minChain) (toFloat <| Board.minChain + distance - 1)
+        * fallingAnimationBaseDuration
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
@@ -407,6 +483,16 @@ animationScale =
 removingAnimationDuration : number
 removingAnimationDuration =
     400 * animationScale
+
+
+fallingAnimationBaseDuration : number
+fallingAnimationBaseDuration =
+    400 * animationScale
+
+
+gameOverScreenDelay : number
+gameOverScreenDelay =
+    200 * animationScale
 
 
 calcAnimationProgress : Float -> Float -> Float -> Float

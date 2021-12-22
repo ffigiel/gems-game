@@ -5,6 +5,7 @@ module Board exposing
     , chainOfSameColor
     , chainScore
     , generator
+    , isGameOver
     , isValid
     , minChain
     , myHighScore
@@ -333,3 +334,9 @@ isValid board =
                 in
                 Dict.size chain < minChain
             )
+
+
+isGameOver : Board -> Bool
+isGameOver _ =
+    -- TODO
+    False

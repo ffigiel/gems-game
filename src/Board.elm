@@ -5,7 +5,7 @@ module Board exposing
     , chainOfSameColor
     , chainScore
     , generator
-    , isGameOver
+    , isValid
     , minChain
     , myHighScore
     , numCols
@@ -52,6 +52,14 @@ generator =
         |> Random.list numCols
         |> Random.list numRows
         |> Random.map Array2d.fromList
+        |> Random.andThen
+            (\b ->
+                if isValid b then
+                    Random.constant b
+
+                else
+                    generator
+            )
 
 
 piecesQueueGenerator : Generator (List Piece)
@@ -70,19 +78,25 @@ type alias Board =
 
 type Piece
     = Red
+    | Orange
     | Yellow
     | Green
+    | Cyan
     | Blue
     | Purple
+    | White
 
 
 pieces : List Piece
 pieces =
     [ Red
+    , Orange
     , Yellow
     , Green
+    , Cyan
     , Blue
     , Purple
+    , White
     ]
 
 
@@ -291,8 +305,8 @@ removePieces removedPieces piecesQueue board =
     ( Array2d.map (Maybe.withDefault Red) withNewPieces, newQueue, Dict.fromList fallingPieces )
 
 
-isGameOver : Board -> Bool
-isGameOver board =
+isValid : Board -> Bool
+isValid board =
     board
         |> Array2d.indexedMap (\x y piece -> ( x, y, piece ))
         |> Array2d.toList

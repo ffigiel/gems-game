@@ -196,11 +196,11 @@ update msg model =
                 | board = board
                 , piecesQueue = model.piecesQueue ++ piecesQueue
               }
-            , if Board.isGameOver board then
-                generateBoardCmd
+            , if Board.isValid board then
+                Cmd.none
 
               else
-                Cmd.none
+                generateBoardCmd
             )
 
         ResizedWindow ->
@@ -638,17 +638,26 @@ viewPiece { now, x, y, piece, state } =
                 Red ->
                     ( "-red", "★" )
 
+                Orange ->
+                    ( "-orange", "T" )
+
                 Yellow ->
                     ( "-yellow", "▲" )
 
                 Green ->
                     ( "-green", "●" )
 
+                Cyan ->
+                    ( "-cyan", "T" )
+
                 Blue ->
                     ( "-blue", "◆" )
 
                 Purple ->
                     ( "-purple", "■" )
+
+                White ->
+                    ( "-white", "T" )
 
         ( xPos, yPos, otherAttrs ) =
             pieceRenderPosition ( x, y )

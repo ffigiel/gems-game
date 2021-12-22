@@ -5,10 +5,13 @@
   --text: #cccccc;
 
   --red: #d06060;
-  --yellow: #f0bd62;
+  --orange: #f48d72;
+  --yellow: #f0cd62;
   --green: #6ead54;
-  --blue: #5eb3e2;
+  --cyan: #2eb4bf;
+  --blue: #4e83e6;
   --purple: #8d75cd;
+  --white: #cdcecf;
   --shadow: rgba(0, 0, 0, 0.6);
 
   --font:
@@ -117,14 +120,23 @@ svg text {
 .gamePiece.-yellow circle {
   fill: var(--yellow);
 }
+.gamePiece.-orange circle {
+  fill: var(--orange);
+}
 .gamePiece.-green circle {
   fill: var(--green);
+}
+.gamePiece.-cyan circle {
+  fill: var(--cyan);
 }
 .gamePiece.-blue circle {
   fill: var(--blue);
 }
 .gamePiece.-purple circle {
   fill: var(--purple);
+}
+.gamePiece.-white circle {
+  fill: var(--white);
 }
 .gamePiece text {
   fill: #000;

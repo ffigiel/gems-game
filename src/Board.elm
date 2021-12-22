@@ -13,6 +13,7 @@ module Board exposing
     , piecesQueueGenerator
     , queueSize
     , removePieces
+    , validChain
     )
 
 import Array
@@ -106,6 +107,19 @@ type alias BoardSearch =
 
 type alias Chain =
     Dict ( Int, Int ) Piece
+
+
+validChain : Piece -> ( Int, Int ) -> Board -> Chain
+validChain piece ( x, y ) board =
+    let
+        chain =
+            chainOfSameColor piece ( x, y ) board
+    in
+    if Dict.size chain < minChain then
+        Dict.empty
+
+    else
+        chain
 
 
 chainOfSameColor : Piece -> ( Int, Int ) -> Board -> Chain

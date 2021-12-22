@@ -1,6 +1,7 @@
 port module Main exposing (main)
 
 import Array
+import Array2d
 import Board exposing (Board, Piece(..))
 import Browser
 import Browser.Dom
@@ -248,9 +249,66 @@ update msg model =
                     ( model, Cmd.none )
 
         DroppedPiece ->
-            ( { model | heldPiece = Nothing }
-            , Cmd.none
-            )
+            case model.heldPiece of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just hp ->
+                    if hp.startPoint == hp.gamePos then
+                        ( { model | heldPiece = Nothing }
+                        , Cmd.none
+                        )
+
+                    else
+                        let
+                            ( x, y ) =
+                                hp.pos
+
+                            dir =
+                                getDirection hp.startPoint hp.gamePos
+
+                            ( newX, newY ) =
+                                case dir of
+                                    Up ->
+                                        ( x, y + 1 )
+
+                                    Down ->
+                                        ( x, y - 1 )
+
+                                    Left ->
+                                        ( x - 1, y )
+
+                                    Right ->
+                                        ( x + 1, y )
+
+                            movedPiece =
+                                Array2d.get newX newY model.board
+
+                            ( newBoard, chain ) =
+                                case movedPiece of
+                                    Just mp ->
+                                        let
+                                            b =
+                                                model.board
+                                                    |> Array2d.set x y mp
+                                                    |> Array2d.set newX newY hp.piece
+
+                                            c =
+                                                Dict.union
+                                                    (Board.validChain mp ( x, y ) b)
+                                                    (Board.validChain hp.piece ( newX, newY ) b)
+                                        in
+                                        ( b, c )
+
+                                    Nothing ->
+                                        ( model.board, Dict.empty )
+                        in
+                        ( { model
+                            | heldPiece = Nothing
+                            , board = newBoard
+                          }
+                        , Cmd.none
+                        )
 
         GotPiecesQueue queue ->
             ( { model | piecesQueue = model.piecesQueue ++ queue }, Cmd.none )
@@ -536,7 +594,7 @@ boardPieceState ( x, y ) fallingPieces heldPiece =
                             dy =
                                 Tuple.second hp.startPoint - Tuple.second hp.gamePos
                         in
-                        if dx == 0 && dy == 0 then
+                        if hp.startPoint == hp.gamePos then
                             PieceIdle
 
                         else if dir == Up && hp.pos == ( x, y - 1 ) then

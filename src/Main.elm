@@ -198,11 +198,11 @@ update msg model =
                 | board = board
                 , piecesQueue = model.piecesQueue ++ piecesQueue
               }
-            , if Board.isValid board then
-                Cmd.none
+            , if Board.isGameOver board then
+                generateBoardCmd
 
               else
-                generateBoardCmd
+                Cmd.none
             )
 
         ResizedWindow ->

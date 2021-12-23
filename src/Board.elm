@@ -6,7 +6,6 @@ module Board exposing
     , chainScore
     , generator
     , isGameOver
-    , isValid
     , minChain
     , myHighScore
     , numCols
@@ -57,11 +56,11 @@ generator =
         |> Random.map Array2d.fromList
         |> Random.andThen
             (\b ->
-                if isValid b then
-                    Random.constant b
+                if isGameOver b then
+                    generator
 
                 else
-                    generator
+                    Random.constant b
             )
 
 
@@ -109,6 +108,16 @@ type alias BoardSearch =
 
 type alias Chain =
     Dict ( Int, Int ) Piece
+
+
+hasValidChainAt : ( Int, Int ) -> Board -> Bool
+hasValidChainAt ( x, y ) board =
+    case Array2d.get x y board of
+        Just p ->
+            Dict.size (validChain p ( x, y ) board) /= 0
+
+        Nothing ->
+            False
 
 
 validChain : Piece -> ( Int, Int ) -> Board -> Chain
@@ -321,26 +330,27 @@ removePieces removedPieces piecesQueue board =
     ( Array2d.map (Maybe.withDefault Red) withNewPieces, newQueue, Dict.fromList fallingPieces )
 
 
-isValid : Board -> Bool
-isValid board =
+isGameOver : Board -> Bool
+isGameOver board =
+    let
+        hasChainAfterSwap ( ax, ay ) ( bx, by ) =
+            board
+                |> swapPieces ( ax, ay ) ( bx, by )
+                |> (\board2 ->
+                        hasValidChainAt ( ax, ay ) board2
+                            || hasValidChainAt ( bx, by ) board2
+                   )
+    in
     board
-        |> Array2d.indexedMap (\x y piece -> ( x, y, piece ))
+        |> Array2d.indexedMap (\x y _ -> ( x, y ))
         |> Array2d.toList
         |> List.concat
-        |> List.all
-            (\( x, y, piece ) ->
-                let
-                    chain =
-                        chainOfSameColor piece ( x, y ) board
-                in
-                Dict.size chain < minChain
+        |> List.any
+            (\( x, y ) ->
+                hasChainAfterSwap ( x, y ) ( x + 1, y )
+                    || hasChainAfterSwap ( x, y ) ( x, y + 1 )
             )
-
-
-isGameOver : Board -> Bool
-isGameOver _ =
-    -- TODO
-    False
+        |> not
 
 
 swapPieces : ( Int, Int ) -> ( Int, Int ) -> Board -> Board

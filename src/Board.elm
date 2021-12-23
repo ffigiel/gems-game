@@ -81,11 +81,14 @@ type alias Board =
 type Piece
     = Red
     | Orange
+    | Brown
     | Yellow
+    | Greelow
     | Green
     | Cyan
     | Blue
     | Purple
+    | Pink
     | White
 
 
@@ -93,11 +96,14 @@ pieces : List Piece
 pieces =
     [ Red
     , Orange
+    , Brown
     , Yellow
+    , Greelow
     , Green
     , Cyan
     , Blue
     , Purple
+    , Pink
     , White
     ]
 

@@ -787,10 +787,16 @@ viewPiece { now, x, y, piece, state } =
                     ( "-red", "★" )
 
                 Orange ->
-                    ( "-orange", "I" )
+                    ( "-orange", "U" )
+
+                Brown ->
+                    ( "-brown", "I" )
 
                 Yellow ->
                     ( "-yellow", "▲" )
+
+                Greelow ->
+                    ( "-greelow", "S" )
 
                 Green ->
                     ( "-green", "●" )
@@ -803,6 +809,9 @@ viewPiece { now, x, y, piece, state } =
 
                 Purple ->
                     ( "-purple", "■" )
+
+                Pink ->
+                    ( "-pink", "!" )
 
                 White ->
                     ( "-white", "V" )

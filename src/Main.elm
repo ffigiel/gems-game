@@ -291,8 +291,7 @@ update msg model =
                                         let
                                             b =
                                                 model.board
-                                                    |> Array2d.set x y sp
-                                                    |> Array2d.set newX newY hp.piece
+                                                    |> Board.swapPieces ( x, y ) ( newX, newY )
 
                                             c =
                                                 Dict.union

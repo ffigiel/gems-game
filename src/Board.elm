@@ -14,6 +14,7 @@ module Board exposing
     , piecesQueueGenerator
     , queueSize
     , removePieces
+    , swapPieces
     , validChain
     )
 
@@ -340,3 +341,22 @@ isGameOver : Board -> Bool
 isGameOver _ =
     -- TODO
     False
+
+
+swapPieces : ( Int, Int ) -> ( Int, Int ) -> Board -> Board
+swapPieces ( ax, ay ) ( bx, by ) board =
+    let
+        map =
+            Array2d.get ax ay board
+
+        mbp =
+            Array2d.get bx by board
+    in
+    case ( map, mbp ) of
+        ( Just ap, Just bp ) ->
+            board
+                |> Array2d.set ax ay bp
+                |> Array2d.set bx by ap
+
+        _ ->
+            board

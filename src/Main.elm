@@ -663,40 +663,40 @@ boardPieceState ( x, y ) fallingPieces heldPiece =
         PieceHidden
 
     else
-        case Dict.get ( x, y ) fallingPieces of
-            Just falling ->
-                PieceFalling falling
+        case heldPiece of
+            Just hp ->
+                let
+                    dir =
+                        getDirection hp.startPoint hp.gamePos
+
+                    dx =
+                        Tuple.first hp.startPoint - Tuple.first hp.gamePos
+
+                    dy =
+                        Tuple.second hp.startPoint - Tuple.second hp.gamePos
+                in
+                if hp.startPoint == hp.gamePos then
+                    PieceIdle
+
+                else if dir == Up && hp.pos == ( x, y - 1 ) then
+                    PieceSwitching ( 0, dy )
+
+                else if dir == Down && hp.pos == ( x, y + 1 ) then
+                    PieceSwitching ( 0, dy )
+
+                else if dir == Left && hp.pos == ( x + 1, y ) then
+                    PieceSwitching ( dx, 0 )
+
+                else if dir == Right && hp.pos == ( x - 1, y ) then
+                    PieceSwitching ( dx, 0 )
+
+                else
+                    PieceIdle
 
             Nothing ->
-                case heldPiece of
-                    Just hp ->
-                        let
-                            dir =
-                                getDirection hp.startPoint hp.gamePos
-
-                            dx =
-                                Tuple.first hp.startPoint - Tuple.first hp.gamePos
-
-                            dy =
-                                Tuple.second hp.startPoint - Tuple.second hp.gamePos
-                        in
-                        if hp.startPoint == hp.gamePos then
-                            PieceIdle
-
-                        else if dir == Up && hp.pos == ( x, y - 1 ) then
-                            PieceSwitching ( 0, dy )
-
-                        else if dir == Down && hp.pos == ( x, y + 1 ) then
-                            PieceSwitching ( 0, dy )
-
-                        else if dir == Left && hp.pos == ( x + 1, y ) then
-                            PieceSwitching ( dx, 0 )
-
-                        else if dir == Right && hp.pos == ( x - 1, y ) then
-                            PieceSwitching ( dx, 0 )
-
-                        else
-                            PieceIdle
+                case Dict.get ( x, y ) fallingPieces of
+                    Just falling ->
+                        PieceFalling falling
 
                     Nothing ->
                         PieceIdle

@@ -783,7 +783,7 @@ viewPiece { now, x, y, piece, state } =
                     ( "-red", "★" )
 
                 Orange ->
-                    ( "-orange", "T" )
+                    ( "-orange", "I" )
 
                 Yellow ->
                     ( "-yellow", "▲" )
@@ -801,7 +801,7 @@ viewPiece { now, x, y, piece, state } =
                     ( "-purple", "■" )
 
                 White ->
-                    ( "-white", "T" )
+                    ( "-white", "V" )
 
         ( xPos, yPos, otherAttrs ) =
             pieceRenderPosition ( x, y )

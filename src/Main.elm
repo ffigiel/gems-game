@@ -304,11 +304,16 @@ update msg model =
                                     Nothing ->
                                         ( model.board, Dict.empty )
                         in
-                        { model
-                            | heldPiece = Nothing
-                            , board = newBoard
-                        }
-                            |> handleValidMove chain
+                        { model | heldPiece = Nothing }
+                            |> (\m ->
+                                    case Dict.size chain of
+                                        0 ->
+                                            ( m, Cmd.none )
+
+                                        _ ->
+                                            { m | board = newBoard }
+                                                |> handleValidMove chain
+                               )
 
         GotPiecesQueue queue ->
             ( { model | piecesQueue = model.piecesQueue ++ queue }, Cmd.none )

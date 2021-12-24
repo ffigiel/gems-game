@@ -121,23 +121,40 @@ hasValidChainAt : ( Int, Int ) -> Board -> Bool
 hasValidChainAt ( x, y ) board =
     case Array2d.get x y board of
         Just p ->
-            Dict.size (validChain p ( x, y ) board) /= 0
+            validChain p ( x, y ) board
+                |> Dict.isEmpty
+                |> not
 
         Nothing ->
             False
 
 
+{-| Find horisontal and vertical chains of the same color that are at least `minChain` long
+-}
 validChain : Piece -> ( Int, Int ) -> Board -> Chain
 validChain piece ( x, y ) board =
     let
         chain =
             chainOfSameColor piece ( x, y ) board
-    in
-    if Dict.size chain < minChain then
-        Dict.empty
 
-    else
-        chain
+        checkChainLength c =
+            if Dict.size c < minChain then
+                Dict.empty
+
+            else
+                c
+
+        vertChain =
+            chain
+                |> Dict.filter (\( px, _ ) _ -> px == x)
+                |> checkChainLength
+
+        horChain =
+            chain
+                |> Dict.filter (\( _, py ) _ -> py == y)
+                |> checkChainLength
+    in
+    Dict.union vertChain horChain
 
 
 chainOfSameColor : Piece -> ( Int, Int ) -> Board -> Chain

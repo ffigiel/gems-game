@@ -837,10 +837,16 @@ viewPiece { now, x, y, piece, state } =
                 |> (\( xp, yp ) ->
                         let
                             ( minx, miny ) =
-                                pieceRenderPosition ( x - 1, y - 1 )
+                                pieceRenderPosition
+                                    ( max 0 (x - 1)
+                                    , max 0 (y - 1)
+                                    )
 
                             ( maxx, maxy ) =
-                                pieceRenderPosition ( x + 1, y + 1 )
+                                pieceRenderPosition
+                                    ( min (Board.numCols - 1) (x + 1)
+                                    , min (Board.numRows - 1) (y + 1)
+                                    )
                         in
                         case state of
                             PieceIdle ->
@@ -873,8 +879,7 @@ viewPiece { now, x, y, piece, state } =
                                 in
                                 ( clamp minx maxx newXPos
                                 , clamp miny maxy newYPos
-                                , [ -- SA.transform "translate(-2 -2)"
-                                    SA.class "-held"
+                                , [ SA.class "-held"
                                   ]
                                 )
 

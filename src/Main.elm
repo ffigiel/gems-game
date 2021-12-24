@@ -558,23 +558,32 @@ pieceRenderPosition ( x, y ) =
     )
 
 
+svgWidth : number
+svgWidth =
+    pieceRenderPosition ( Board.numCols, Board.numRows )
+        |> (\( w, _ ) -> w - boardGutter)
+
+
+svgBoardHeight : number
+svgBoardHeight =
+    pieceRenderPosition ( Board.numCols, Board.numRows )
+        |> (\( _, h ) -> h - boardGutter)
+
+
+svgHeight : number
+svgHeight =
+    svgBoardHeight + gap + textHeight + gap + textHeight
+
+
 view : Model -> Html Msg
 view model =
-    let
-        ( width, boardHeight ) =
-            pieceRenderPosition ( Board.numCols, Board.numRows )
-                |> (\( w, h ) -> ( w - boardGutter, h - boardGutter ))
-
-        height =
-            boardHeight + gap + textHeight + gap + textHeight
-    in
     H.div [ HA.class "gameContainer" ]
         [ S.svg
             [ SA.viewBox
                 ([ -gap
                  , -gap
-                 , width + 2 * gap
-                 , height + 2 * gap
+                 , svgWidth + 2 * gap
+                 , svgHeight + 2 * gap
                  ]
                     |> List.map String.fromFloat
                     |> String.join " "
@@ -596,7 +605,7 @@ view model =
                     "translate("
                         ++ String.fromFloat 0
                         ++ " "
-                        ++ String.fromFloat (boardHeight + gap)
+                        ++ String.fromFloat (svgBoardHeight + gap)
                         ++ ")"
                 ]
                 [ HL.lazy2 viewScore model.score model.highScore

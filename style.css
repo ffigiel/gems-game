@@ -96,14 +96,13 @@ svg text {
 /* Game */
 
 #gameView {
+  display: block;
+  width: 100vw;
   height: 100vh;
 }
 
 .gameContainer {
-  display: grid;
-  place-items: center;
   font-size: var(--font-m);
-  margin: 0 auto;
   max-width: 40rem;
 }
 

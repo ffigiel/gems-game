@@ -104,7 +104,6 @@ svg text {
 
 .gameContainer {
   font-size: var(--font-m);
-  max-width: 40rem;
 }
 
 .gamePiece {

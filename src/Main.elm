@@ -11,13 +11,13 @@ import Ease
 import Html as H exposing (Attribute, Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Html.Events.Extra.Pointer as HEEP
 import Html.Lazy as HL
 import Json.Decode as JD
 import Process
 import Random
 import Svg as S exposing (Svg)
 import Svg.Attributes as SA
-import Svg.Events as SE
 import Task
 
 
@@ -181,9 +181,10 @@ type Msg
     | ResizedWindow
     | GotGameBbox (Result Browser.Dom.Error Bbox)
     | Tick Float
-    | GrabbedPiece Piece ( Int, Int ) ( Float, Float )
-    | MovedPiece ( Float, Float )
-    | DroppedPiece
+    | GrabbedPiece Piece ( Int, Int ) HEEP.Event
+    | MovedPiece HEEP.Event
+    | DroppedPiece HEEP.Event
+    | ReturnedPiece HEEP.Event
     | GotPiecesQueue (List Piece)
     | RemoveAnimationState Int
     | GameOver
@@ -223,25 +224,29 @@ update msg model =
         Tick d ->
             ( { model | time = model.time + d }, Cmd.none )
 
-        GrabbedPiece piece ( x, y ) mouseXY ->
+        GrabbedPiece piece ( x, y ) e ->
             ( { model
                 | heldPiece =
                     Just
                         { piece = piece
                         , pos = ( x, y )
-                        , startPoint = mouseToGamePosition model.gameBbox mouseXY
-                        , gamePos = mouseToGamePosition model.gameBbox mouseXY
+                        , startPoint = mouseToGamePosition model.gameBbox e.pointer.pagePos
+                        , gamePos = mouseToGamePosition model.gameBbox e.pointer.pagePos
                         }
               }
             , Cmd.none
             )
 
-        MovedPiece mouseXY ->
+        MovedPiece e ->
             case model.heldPiece of
                 Just hp ->
                     ( { model
                         | heldPiece =
-                            Just { hp | gamePos = mouseToGamePosition model.gameBbox mouseXY }
+                            Just
+                                { hp
+                                    | gamePos =
+                                        mouseToGamePosition model.gameBbox e.pointer.pagePos
+                                }
                       }
                     , Cmd.none
                     )
@@ -249,7 +254,7 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
-        DroppedPiece ->
+        DroppedPiece _ ->
             case model.heldPiece of
                 Nothing ->
                     ( model, Cmd.none )
@@ -313,6 +318,9 @@ update msg model =
                                             { m | board = newBoard }
                                                 |> handleValidMove chain
                                )
+
+        ReturnedPiece _ ->
+            ( { model | heldPiece = Nothing }, Cmd.none )
 
         GotPiecesQueue queue ->
             ( { model | piecesQueue = model.piecesQueue ++ queue }, Cmd.none )
@@ -451,27 +459,11 @@ calcFallingAnimationDuration distance =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ Browser.Events.onAnimationFrameDelta Tick
         , Browser.Events.onResize (\_ _ -> ResizedWindow)
-        , case model.heldPiece of
-            Just _ ->
-                Sub.batch
-                    [ Browser.Events.onMouseMove (JD.map MovedPiece mouseEventPositionDecoder)
-                    , Browser.Events.onMouseUp (JD.succeed DroppedPiece)
-                    ]
-
-            Nothing ->
-                Sub.none
         ]
-
-
-mouseEventPositionDecoder : JD.Decoder ( Float, Float )
-mouseEventPositionDecoder =
-    JD.map2 Tuple.pair
-        (JD.field "pageX" JD.float)
-        (JD.field "pageY" JD.float)
 
 
 
@@ -577,7 +569,22 @@ svgHeight =
 
 view : Model -> Html Msg
 view model =
-    H.div [ HA.class "gameContainer" ]
+    let
+        touchEventHandlers =
+            case model.heldPiece of
+                Just _ ->
+                    [ HEEP.onMove MovedPiece
+                    , HEEP.onUp DroppedPiece
+                    , HEEP.onCancel ReturnedPiece
+                    ]
+
+                Nothing ->
+                    []
+    in
+    H.div
+        (HA.class "gameContainer"
+            :: touchEventHandlers
+        )
         [ S.svg
             [ SA.viewBox
                 ([ -gap
@@ -915,9 +922,6 @@ viewPiece { now, x, y, piece, state } =
                                 , []
                                 )
                    )
-
-        grabDecoder =
-            JD.map (GrabbedPiece piece ( x, y )) mouseEventPositionDecoder
     in
     S.g
         [ SA.transform <|
@@ -929,8 +933,7 @@ viewPiece { now, x, y, piece, state } =
         ]
         [ S.g
             ([ SA.class <| "gamePiece " ++ colorClass
-             , SE.on "mousedown" grabDecoder
-             , SE.on "touchstart" grabDecoder
+             , HEEP.onDown (GrabbedPiece piece ( x, y ))
              ]
                 ++ otherAttrs
             )

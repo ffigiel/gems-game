@@ -97,8 +97,9 @@ svg text {
 
 #gameView {
   display: block;
-  width: 100vw;
-  height: 100vh;
+  margin: 0 auto;
+  max-width: 100vw;
+  max-height: 100vh;
 }
 
 .gameContainer {

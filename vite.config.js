@@ -20,11 +20,11 @@ export default defineConfig(({ mode }) => {
           background_color: '#222222',
           icons: [{
             src: "img/gems_icon.png",
-            sizes: "512x512",
+            sizes: "1242x1242",
             type: "image/png",
           }, {
             src: "img/gems_maskable.png",
-            sizes: "640x640",
+            sizes: "1242x1242",
             type: "image/png",
             purpose: "maskable",
           }],

@@ -558,19 +558,19 @@ pieceRenderPosition ( x, y ) =
     )
 
 
-svgWidth : number
+svgWidth : Float
 svgWidth =
     pieceRenderPosition ( Board.numCols, Board.numRows )
         |> (\( w, _ ) -> w - boardGutter)
 
 
-svgBoardHeight : number
+svgBoardHeight : Float
 svgBoardHeight =
     pieceRenderPosition ( Board.numCols, Board.numRows )
         |> (\( _, h ) -> h - boardGutter)
 
 
-svgHeight : number
+svgHeight : Float
 svgHeight =
     svgBoardHeight + gap + textHeight + gap + textHeight
 

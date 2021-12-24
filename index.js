@@ -6,11 +6,11 @@ registerSW()
 const app = Elm.Main.init({
   node: document.getElementById("app"),
   flags: {
-    highScore: window.localStorage.getItem("highScore"),
+    highScore: window.localStorage.getItem("gems.highScore"),
   },
 })
 app.ports.saveHighScore.subscribe(hs => {
-  window.localStorage.setItem("highScore", hs)
+  window.localStorage.setItem("gems.highScore", hs)
 })
 app.ports.vibrate.subscribe(() => {
   window.navigator.vibrate(1)

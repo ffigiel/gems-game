@@ -103,7 +103,8 @@ pieces =
     , Cyan
     , Blue
     , Purple
-    , Pink
+
+    -- , Pink
     , White
     ]
 

@@ -1,0 +1,9 @@
+gameOver = Koniec gry
+newHighScore = Nowy rekord! {$score}
+playAgainBtn = Jeszcze raz?
+congratulations = Gratulacje!
+beatenHighScore = Pobiłeś mój rekord.
+thanksForPlaying = Dzięki za grę!
+viewSource = Zobacz kod źródłowy ↗
+gameScore = Wynik: {$score}
+gameHighScore = Najlepszy wynik: {$score}

@@ -6,6 +6,7 @@ registerSW()
 const app = Elm.Main.init({
   node: document.getElementById("app"),
   flags: {
+    language: window.navigator.language,
     highScore: window.localStorage.getItem("highScore"),
   },
 })

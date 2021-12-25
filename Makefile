@@ -1,4 +1,4 @@
-.PHONY: clean dev
+.PHONY: clean dev i18n
 VERSION_ID := $(shell git describe --always --long --tags --dirty)
 
 .DEFAULT_GOAL:= dist
@@ -12,12 +12,5 @@ dist: clean
 dev:
 	npx vite
 
-deploy-pages: dist
-	git checkout f2568b9
-	git branch -D gh-pages
-	git checkout -b gh-pages
-	git add dist
-	git mv dist/* .
-	git commit -m "chore: release ${VERSION_ID}"
-	git push -f origin gh-pages
-	git checkout main
+i18n:
+	npx travelm-agency --inline --elm_path=src/I18n.elm i18n

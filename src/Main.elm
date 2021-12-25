@@ -627,6 +627,13 @@ view model =
 
                 Nothing ->
                     []
+
+        gameViewMod =
+            if model.isGameOver then
+                "-gameOver"
+
+            else
+                ""
     in
     H.div
         (HA.class "gameContainer"
@@ -643,6 +650,7 @@ view model =
                     |> String.join " "
                 )
             , SA.id "gameView"
+            , SA.class gameViewMod
             ]
             [ if Dict.isEmpty model.removedPieces && Dict.isEmpty model.fallingPieces then
                 HL.lazy5 viewBoard

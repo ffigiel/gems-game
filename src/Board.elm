@@ -59,6 +59,9 @@ generator =
                 if isGameOver b then
                     generator
 
+                else if hasAnyValidChain b then
+                    generator
+
                 else
                     Random.constant b
             )
@@ -115,6 +118,15 @@ type alias BoardSearch =
 
 type alias Chain =
     Dict ( Int, Int ) Piece
+
+
+hasAnyValidChain : Board -> Bool
+hasAnyValidChain board =
+    board
+        |> Array2d.any
+            (\( x, y, _ ) ->
+                hasValidChainAt ( x, y ) board
+            )
 
 
 hasValidChainAt : ( Int, Int ) -> Board -> Bool

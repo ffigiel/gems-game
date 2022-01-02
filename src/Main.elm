@@ -373,17 +373,28 @@ update msg model =
             ( { model | piecesQueue = model.piecesQueue ++ queue }, Cmd.none )
 
         RemoveAnimationState score ->
-            ( if score == model.score then
-                { model
-                    | removedPieces = Dict.empty
-                    , fallingPieces = Dict.empty
-                }
-
-              else
+            if score /= model.score then
                 -- player clicked during the transition and a new animation started playing
-                model
-            , Cmd.none
-            )
+                ( model, Cmd.none )
+
+            else
+                let
+                    newModel =
+                        { model
+                            | removedPieces = Dict.empty
+                            , fallingPieces = Dict.empty
+                        }
+
+                    -- we'll auto-clear all chains that appeared after inserting new pieces
+                    mergedChain =
+                        Board.allValidChains model.board
+                            |> List.foldl Dict.union Dict.empty
+                in
+                if Dict.isEmpty mergedChain then
+                    ( newModel, Cmd.none )
+
+                else
+                    handleValidMove mergedChain newModel
 
         GameOver ->
             let

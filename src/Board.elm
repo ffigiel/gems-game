@@ -2,6 +2,7 @@ module Board exposing
     ( Board
     , Chain
     , Piece(..)
+    , allValidChains
     , chainOfSameColor
     , chainScore
     , generator
@@ -141,7 +142,32 @@ hasValidChainAt ( x, y ) board =
             False
 
 
-{-| Find horisontal and vertical chains of the same color that are at least `minChain` long
+allValidChains : Board -> List Chain
+allValidChains board =
+    let
+        foldFunc : ( Int, Int, Piece ) -> List Chain -> List Chain
+        foldFunc ( x, y, p ) chains =
+            if List.any (Dict.member ( x, y )) chains then
+                -- these coordinates are a member of one of the chains we found
+                chains
+
+            else
+                let
+                    chain =
+                        validChain p ( x, y ) board
+                in
+                if Dict.isEmpty chain then
+                    chains
+
+                else
+                    chain :: chains
+    in
+    board
+        |> Array2d.indexedMap (\x y p -> ( x, y, p ))
+        |> Array2d.foldl foldFunc []
+
+
+{-| Find horizontal and vertical chains of the same color that are at least `minChain` long
 -}
 validChain : Piece -> ( Int, Int ) -> Board -> Chain
 validChain piece ( x, y ) board =

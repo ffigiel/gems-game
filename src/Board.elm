@@ -99,7 +99,8 @@ type Piece
 pieces : List Piece
 pieces =
     [ Red
-    , Orange
+
+    -- , Orange
     , Brown
     , Yellow
     , Greelow

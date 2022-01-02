@@ -366,11 +366,8 @@ isGameOver board =
                    )
     in
     board
-        |> Array2d.indexedMap (\x y _ -> ( x, y ))
-        |> Array2d.toList
-        |> List.concat
-        |> List.any
-            (\( x, y ) ->
+        |> Array2d.any
+            (\( x, y, _ ) ->
                 hasChainAfterSwap ( x, y ) ( x + 1, y )
                     || hasChainAfterSwap ( x, y ) ( x, y + 1 )
             )

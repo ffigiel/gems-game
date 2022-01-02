@@ -1,5 +1,6 @@
 module Array2d exposing
     ( Array2d
+    , any
     , empty
     , foldl
     , fromList
@@ -23,6 +24,15 @@ type alias Array2d a =
 map : (a -> b) -> Array2d a -> Array2d b
 map f =
     Array.map (Array.map f)
+
+
+any : (( Int, Int, a ) -> Bool) -> Array2d a -> Bool
+any f array =
+    array
+        |> indexedMap (\x y a -> ( x, y, a ))
+        |> toList
+        |> List.concat
+        |> List.any f
 
 
 indexedMap : (Int -> Int -> a -> b) -> Array2d a -> Array2d b

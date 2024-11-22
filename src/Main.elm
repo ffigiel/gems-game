@@ -144,8 +144,8 @@ init flags =
         translations =
             flags
                 |> JD.decodeValue (JD.field "language" languageDecoder)
-                |> Result.withDefault EN
-                |> languageToTranslations
+                |> Result.withDefault I18n.En
+                |> I18n.init
 
         cmd =
             Cmd.batch
@@ -156,41 +156,14 @@ init flags =
     ( model, cmd )
 
 
-type Language
-    = PL
-    | EN
-
-
-languageDecoder : JD.Decoder Language
+languageDecoder : JD.Decoder I18n.Language
 languageDecoder =
     JD.string
-        |> JD.map languageFromString
-
-
-languageFromString : String -> Language
-languageFromString s =
-    let
-        sl =
-            s
-                |> String.toLower
-                |> String.left 2
-    in
-    case sl of
-        "pl" ->
-            PL
-
-        _ ->
-            EN
-
-
-languageToTranslations : Language -> I18n
-languageToTranslations lang =
-    case lang of
-        EN ->
-            I18n.en
-
-        PL ->
-            I18n.pl
+        |> JD.map
+            (\s ->
+                I18n.languageFromString s
+                    |> Maybe.withDefault I18n.En
+            )
 
 
 generateBoardCmd : Cmd Msg
@@ -1029,22 +1002,22 @@ viewGameOver t score isNewHighScore =
             [ H.p
                 [ HA.class "gameOverScreen_title"
                 ]
-                [ H.text t.gameOver
+                [ H.text t.gameOver_
                 ]
             , H.div []
                 [ H.p []
                     [ if isNewHighScore then
-                        H.text <| t.newHighScore <| String.fromInt score
+                        H.text <| t.newHighScore_ <| String.fromInt score
 
                       else
-                        H.text <| t.gameScore <| String.fromInt score
+                        H.text <| t.gameScore_ <| String.fromInt score
                     ]
                 , H.p []
                     [ H.button
                         [ HA.type_ "button"
                         , HE.onClick PlayAgainClicked
                         ]
-                        [ H.text t.playAgainBtn ]
+                        [ H.text t.playAgainBtn_ ]
                     ]
                 ]
             , if score > Board.myHighScore then
@@ -1052,18 +1025,18 @@ viewGameOver t score isNewHighScore =
                     [ HA.class "gameOverScreen_congrats"
                     ]
                     [ H.p []
-                        [ H.text t.congratulations
+                        [ H.text t.congratulations_
                         , H.br [] []
-                        , H.text t.beatenHighScore
+                        , H.text t.beatenHighScore_
                         , H.br [] []
-                        , H.text t.thanksForPlaying
+                        , H.text t.thanksForPlaying_
                         ]
                     , H.p []
                         [ externalLink
                             [ HA.href "https://github.com/megapctr/gems-game"
                             , HA.style "font-size" "1.2rem"
                             ]
-                            [ H.text t.thanksForPlaying ]
+                            [ H.text t.thanksForPlaying_ ]
                         ]
                     ]
 
@@ -1086,11 +1059,11 @@ viewScore t score highScore =
     in
     S.g []
         [ text []
-            (t.gameScore <| String.fromInt score)
+            (t.gameScore_ <| String.fromInt score)
         , text
             [ SA.y <| String.fromFloat (gap + textHeight)
             ]
-            (t.gameHighScore <| String.fromInt (max highScore score))
+            (t.gameHighScore_ <| String.fromInt (max highScore score))
         ]
 
 
